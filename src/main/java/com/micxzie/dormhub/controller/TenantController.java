@@ -1,7 +1,7 @@
 package com.micxzie.dormhub.controller;
 
 import com.micxzie.dormhub.model.Tenant;
-import com.micxzie.dormhub.repository.TenantRepository;
+import com.micxzie.dormhub.service.TenantService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,16 +10,34 @@ import java.util.List;
 @RequestMapping("/api/tenants")
 public class TenantController {
 
-    private final TenantRepository tenantRepository;
+    private final TenantService tenantService;
 
-    // Spring automatically provides (injects) the repository here — 
-    // you never write "new TenantRepository()" yourself.
-    public TenantController(TenantRepository tenantRepository) {
-        this.tenantRepository = tenantRepository;
+    public TenantController(TenantService tenantService) {
+        this.tenantService = tenantService;
     }
 
     @GetMapping
     public List<Tenant> getAllTenants() {
-        return tenantRepository.findAll();
+        return tenantService.getAllTenants();
+    }
+
+    @GetMapping("/{id}")
+    public Tenant getTenantById(@PathVariable Long id) {
+        return tenantService.getTenantById(id);
+    }
+
+    @PostMapping
+    public Tenant createTenant(@RequestBody Tenant tenant) {
+        return tenantService.createTenant(tenant);
+    }
+
+    @PutMapping("/{id}")
+    public Tenant updateTenant(@PathVariable Long id, @RequestBody Tenant tenant) {
+        return tenantService.updateTenant(id, tenant);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteTenant(@PathVariable Long id) {
+        tenantService.deleteTenant(id);
     }
 }
