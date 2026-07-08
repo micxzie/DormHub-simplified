@@ -1,5 +1,7 @@
 package com.micxzie.dormhub.service;
 
+import com.micxzie.dormhub.exception.DuplicateResourceException;
+import com.micxzie.dormhub.exception.ResourceNotFoundException;
 import com.micxzie.dormhub.model.Tenant;
 import com.micxzie.dormhub.repository.TenantRepository;
 import org.springframework.stereotype.Service;
@@ -21,14 +23,13 @@ public class TenantService {
     }
 
     public Tenant getTenantById(Long id) {
-        return tenantRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tenant not found with id: " + id));
+    return tenantRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + id));
     }
 
     public Tenant createTenant(Tenant tenant) {
-        // Business rule: no two tenants can share an email.
         if (tenantRepository.findByEmail(tenant.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use: " + tenant.getEmail());
+            throw new DuplicateResourceException("Email already in use: " + tenant.getEmail());
         }
         return tenantRepository.save(tenant);
     }

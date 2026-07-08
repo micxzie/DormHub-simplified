@@ -1,5 +1,8 @@
 package com.micxzie.dormhub.service;
 
+import com.micxzie.dormhub.exception.DuplicateResourceException;
+import com.micxzie.dormhub.exception.InvalidRequestException;
+import com.micxzie.dormhub.exception.ResourceNotFoundException;
 import com.micxzie.dormhub.model.Room;
 import com.micxzie.dormhub.repository.RoomRepository;
 import org.springframework.stereotype.Service;
@@ -21,24 +24,24 @@ public class RoomService {
 
     public Room getRoomById(Long id){
         return roomRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Room not found with id: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id));
     }
 
     public Room createRoom(Room room){
         // Business rule: no two rooms can share a room number
         // this is my attempt to do the business rule that I think should be necessary
         if(roomRepository.findByRoomNumber(room.getRoomNumber()).isPresent()){
-            throw new RuntimeException("Room number is already in use: " + room.getRoomNumber());
+            throw new DuplicateResourceException("Room number is already in use: " + room.getRoomNumber());
         }
-        if(room.getCapacity() < 1 && room.getCapacity() <= 5){
-            throw new RuntimeException("Capacity must atleast be 1 and not greater than 5");
+        if(room.getCapacity() < 1 || room.getCapacity() > 5){
+            throw new InvalidRequestException("Capacity must at least be 1 and not greater than 5");
         }
         return roomRepository.save(room);
     }
 
     public Room updateRoom(Long id, Room updatedRoom){
-        if(updatedRoom.getCapacity() < 1){
-        throw new RuntimeException("Capacity must be at least 1");
+        if(updatedRoom.getCapacity() < 1 || updatedRoom.getCapacity() > 5){
+        throw new InvalidRequestException("Capacity must be at least 1");
         }
 
         Room existingRoom = getRoomById(id);
