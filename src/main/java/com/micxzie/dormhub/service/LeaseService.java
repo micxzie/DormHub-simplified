@@ -8,6 +8,7 @@ import com.micxzie.dormhub.model.Tenant;
 import com.micxzie.dormhub.repository.LeaseRepository;
 import com.micxzie.dormhub.repository.RoomRepository;
 import com.micxzie.dormhub.repository.TenantRepository;
+import com.micxzie.dormhub.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,13 +19,15 @@ public class LeaseService {
     private final LeaseRepository leaseRepository;
     private final RoomRepository roomRepository;
     private final TenantRepository tenantRepository;
+    private final PaymentRepository paymentRepository;
 
     public LeaseService(LeaseRepository leaseRepository,
                          RoomRepository roomRepository,
-                         TenantRepository tenantRepository) {
+                         TenantRepository tenantRepository, PaymentRepository paymentRepository) {
         this.leaseRepository = leaseRepository;
         this.roomRepository = roomRepository;
         this.tenantRepository = tenantRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     public List<Lease> getAllLeases() {
@@ -62,6 +65,11 @@ public class LeaseService {
 
     public void deleteLease(Long id) {
         Lease existingLease = getLeaseById(id);
+
+        if (paymentRepository.existsByLease(existingLease)) {
+        throw new InvalidRequestException("Cannot delete lease with existing payment records");
+        }
+
         leaseRepository.delete(existingLease);
     }
 }

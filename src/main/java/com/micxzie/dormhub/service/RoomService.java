@@ -5,6 +5,7 @@ import com.micxzie.dormhub.exception.InvalidRequestException;
 import com.micxzie.dormhub.exception.ResourceNotFoundException;
 import com.micxzie.dormhub.model.Room;
 import com.micxzie.dormhub.repository.RoomRepository;
+import com.micxzie.dormhub.repository.LeaseRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +14,11 @@ import java.util.List;
 public class RoomService {
     
     private final RoomRepository roomRepository;
+    private final LeaseRepository leaseRepository;
 
-    public RoomService(RoomRepository roomRepository){
+    public RoomService(RoomRepository roomRepository, LeaseRepository leaseRepository){
         this.roomRepository = roomRepository;
+        this.leaseRepository = leaseRepository;
     }
 
     public List<Room> getAllRooms(){
@@ -55,6 +58,11 @@ public class RoomService {
 
     public void deleteRoom(Long id){
         Room existingRoom = getRoomById(id);
+
+        if (leaseRepository.countByRoomAndStatus(existingRoom, "ACTIVE") > 0) {
+        throw new InvalidRequestException("Cannot delete room with active lease records");
+        }
+
         roomRepository.delete(existingRoom);
     }
 }

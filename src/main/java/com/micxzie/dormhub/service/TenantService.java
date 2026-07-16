@@ -5,6 +5,7 @@ import com.micxzie.dormhub.exception.InvalidRequestException;
 import com.micxzie.dormhub.exception.ResourceNotFoundException;
 import com.micxzie.dormhub.model.Tenant;
 import com.micxzie.dormhub.repository.TenantRepository;
+import com.micxzie.dormhub.repository.LeaseRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,12 +16,14 @@ import java.util.List;
 public class TenantService {
 
     private final TenantRepository tenantRepository;
+    private final LeaseRepository leaseRepository;
     private final PasswordEncoder passwordEncoder;
 
     // Same pattern as before — Spring injects the repository automatically.
-    public TenantService(TenantRepository tenantRepository, PasswordEncoder passwordEncoder) {
+    public TenantService(TenantRepository tenantRepository, PasswordEncoder passwordEncoder, LeaseRepository leaseRepository) {
         this.tenantRepository = tenantRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leaseRepository = leaseRepository;
     }
 
     public Tenant authenticate(String email, String rawPassword) {
@@ -70,6 +73,11 @@ public class TenantService {
 
     public void deleteTenant(Long id) {
         Tenant existingTenant = getTenantById(id); // throws if not found, so we don't delete nothing
+        
+        if (leaseRepository.existsByTenant(existingTenant)) {
+        throw new InvalidRequestException("Cannot delete tenant with existing lease records");
+        }
+
         tenantRepository.delete(existingTenant);
     }
 }
