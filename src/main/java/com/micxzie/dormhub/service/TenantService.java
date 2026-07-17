@@ -5,6 +5,7 @@ import com.micxzie.dormhub.exception.InvalidRequestException;
 import com.micxzie.dormhub.exception.ResourceNotFoundException;
 import com.micxzie.dormhub.model.Tenant;
 import com.micxzie.dormhub.repository.TenantRepository;
+import com.micxzie.dormhub.security.SecurityUtil;
 import com.micxzie.dormhub.repository.LeaseRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,12 +19,15 @@ public class TenantService {
     private final TenantRepository tenantRepository;
     private final LeaseRepository leaseRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SecurityUtil securityUtil;
 
     // Same pattern as before — Spring injects the repository automatically.
-    public TenantService(TenantRepository tenantRepository, PasswordEncoder passwordEncoder, LeaseRepository leaseRepository) {
+    public TenantService(TenantRepository tenantRepository, PasswordEncoder passwordEncoder, 
+        LeaseRepository leaseRepository, SecurityUtil securityUtil) {
         this.tenantRepository = tenantRepository;
         this.passwordEncoder = passwordEncoder;
         this.leaseRepository = leaseRepository;
+        this.securityUtil = securityUtil;
     }
 
     public Tenant authenticate(String email, String rawPassword) {
@@ -37,12 +41,23 @@ public class TenantService {
     }
 
     public List<Tenant> getAllTenants() {
+        if (securityUtil.isCurrentUserAdmin()) {
         return tenantRepository.findAll();
+        }
+
+        Tenant currentTenant = getTenantByEmail(securityUtil.getCurrentUserEmail());
+        return List.of(currentTenant);
     }
 
     public Tenant getTenantById(Long id) {
-    return tenantRepository.findById(id)
+        Tenant tenant = tenantRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Tenant not found with id: " + id));
+
+        if (!securityUtil.isCurrentUserAdmin() && !tenant.getEmail().equals(securityUtil.getCurrentUserEmail())) {
+            throw new InvalidRequestException("You are not authorized to view this tenant's data");
+        }
+
+        return tenant;
     }
 
     public Tenant getTenantByEmail(String email) {
@@ -60,15 +75,24 @@ public class TenantService {
     }
 
     public Tenant updateTenant(Long id, Tenant updatedTenant) {
-    Tenant existingTenant = getTenantById(id); // reuses the method we already wrote
+        Tenant existingTenant = getTenantById(id); // the tenant actually being edited
 
-    existingTenant.setFirstName(updatedTenant.getFirstName());
-    existingTenant.setLastName(updatedTenant.getLastName());
-    existingTenant.setEmail(updatedTenant.getEmail());
-    existingTenant.setPhone(updatedTenant.getPhone());
-    existingTenant.setRole(updatedTenant.getRole());
+        if (!securityUtil.isCurrentUserAdmin() && !existingTenant.getEmail().equals(securityUtil.getCurrentUserEmail())) {
+            throw new InvalidRequestException("You are not authorized to update this tenant's data");
+        }
 
-    return tenantRepository.save(existingTenant);
+        // Only an admin is allowed to change a tenant's role
+        if (!updatedTenant.getRole().equals(existingTenant.getRole()) && !securityUtil.isCurrentUserAdmin()) {
+            throw new InvalidRequestException("Only an admin can change a tenant's role");
+        }
+
+        existingTenant.setFirstName(updatedTenant.getFirstName());
+        existingTenant.setLastName(updatedTenant.getLastName());
+        existingTenant.setEmail(updatedTenant.getEmail());
+        existingTenant.setPhone(updatedTenant.getPhone());
+        existingTenant.setRole(updatedTenant.getRole());
+
+        return tenantRepository.save(existingTenant);
     }
 
     public void deleteTenant(Long id) {
